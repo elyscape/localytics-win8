@@ -1,4 +1,3 @@
-localytics-win8
-===============
+# A Windows 8 port of the Localytics instrumentation classes
 
-Windows 8 port of Localytics instrumentation class
+[Localytics](http://www.localytics.com/) does not provide an instrumentation library specifically for Windows 8, instead [directing developers to use the HTML5 library](http://www.localytics.com/docs/windows-8-integration/).  Unfortunately, the HTML5 library is not usable by non-HTML5 applications.  This project is a port of [the Windows Phone 7 instrumentation library](http://www.localytics.com/docs/windows-phone-7-integration/) that works in Windows 8 .NET Metro applications.  It may also work in .NET Desktop applications compiled with WinRT support.
