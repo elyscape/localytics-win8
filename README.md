@@ -30,16 +30,16 @@ protected override async void OnLaunched(LaunchActivatedEventArgs args)
 You'll also want to put that at the beginning of OnActivated(), if your app offers any other methods of activation (e.g. search contract, file picker).
 
 Make sure to add a handler to the Suspending event (this has already been done on layout-aware pages as OnSuspending).  At the beginning of OnSuspending(), put this line:
-````
+````csharp
 appSession.close();
 ````
 ### Tagging events (optional)
 To tag an event, use the following line of code:
-````
+````csharp
 ((App)Application.Current).appSession.tagEvent("Event Name");
 ````
 You can attach attributes to an event by passing a Dictionary<string, string> as a second argument to tagEvent().  For example, to collect information about unhandled exceptions, you could use the following code:
-````
+````csharp
 private void OnUnhandledException(object sender, UnhandledExceptionEventArgs unhandledExceptionEventArgs)
 {
   if (appSession == null)
