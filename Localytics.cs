@@ -483,7 +483,7 @@ namespace Localytics
 
         private static string GetDeviceInfo()
         {
-            var hash = HashAlgorithmProvider.OpenAlgorithm(HashAlgorithmNames.Sha256).CreateHash();
+            var hash = HashAlgorithmProvider.OpenAlgorithm(HashAlgorithmNames.Sha512).CreateHash();
             hash.Append(HardwareIdentification.GetPackageSpecificToken(null).Id);
             return CryptographicBuffer.EncodeToHexString(hash.GetValueAndReset());
         }
