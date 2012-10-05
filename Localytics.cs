@@ -270,7 +270,7 @@ namespace Localytics
         }
         #endregion
 
-        #region Data Looklups
+        #region Data Lookups
 
         /// <summary>
         /// Gets the sequence number for the next upload blob. 
@@ -282,7 +282,7 @@ namespace Localytics
             var store = getStore();
             string metaFile = directoryName + @"\" + metaFileName;
             var file = await FileExists(store, metaFile);
-            if (file == null)
+            if (file == null || await IsFileEmpty(file))
             {
                 SetNextSequenceNumber("1");
                 return "1";
@@ -305,7 +305,7 @@ namespace Localytics
             var store = getStore();
             string metaFile = directoryName + @"\" + metaFileName;
             var file = await FileExists(store, metaFile);
-            if (file == null)
+            if (file == null || await IsFileEmpty(file))
             {
                 // Create a new metadata file consisting of a unique installation ID and a sequence number
                 await appendTextToFile(Guid.NewGuid().ToString() + Environment.NewLine + number, metaFileName);
@@ -345,6 +345,14 @@ namespace Localytics
             }
         }
 
+        private static async Task<bool> IsFileEmpty(StorageFile file)
+        {
+            using (var stream = await file.OpenStreamForReadAsync())
+            {
+                return stream.Length == 0;
+            }
+        }
+
         /// <summary>
         /// Gets the timestamp of the storage file containing the sequence numbers. This allows processing to
         /// ignore duplicates or identify missing uploads
@@ -356,7 +364,7 @@ namespace Localytics
             string metaFile = directoryName + @"\" + metaFileName;
             var file = await FileExists(store, metaFile);
             DateTimeOffset dto;
-            if (file == null)
+            if (file == null || await IsFileEmpty(file))
             {
                 SetNextSequenceNumber("1");
                 dto = DateTimeOffset.MinValue;
