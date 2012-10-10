@@ -7,16 +7,16 @@
 Instrumenting a Windows 8 app is almost identical to [instrumenting a WP7 app](http://www.localytics.com/docs/windows-phone-7-integration/), but the names of some methods have changed.  Put these lines:
 ````csharp
 appSession = new LocalyticsSession("app key");
-appSession.open();
-appSession.upload();
+await appSession.Open();
+appSession.Upload();
 ````
 at the beginning of [OnLaunched()](http://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.application.onlaunched.aspx).  Yes, before you check to see if you're were already running.  So it should look something like this:
 ````csharp
 protected override async void OnLaunched(LaunchActivatedEventArgs args)
 {
   appSession = new LocalyticsSession("app key");
-  appSession.open();
-  appSession.upload();
+  await appSession.Open();
+  appSession.Upload();
   
   // Do not repeat app initialization when already running, just ensure that
   // the window is active
@@ -31,14 +31,14 @@ You'll also want to put that at the beginning of [OnActivated()](http://msdn.mic
 
 Make sure to add a handler to the Suspending event (this has already been done on layout-aware pages as OnSuspending).  At the beginning of OnSuspending(), put this line:
 ````csharp
-appSession.close();
+await appSession.Close();
 ````
 ### Tagging events (optional)
 To tag an event, use the following line of code:
 ````csharp
-((App)Application.Current).appSession.tagEvent("Event Name");
+((App)Application.Current).appSession.TagEvent("Event Name");
 ````
-You can attach attributes to an event by passing a Dictionary<string, string> as a second argument to tagEvent().  For example, to collect information about unhandled exceptions, you could use the following code:
+You can attach attributes to an event by passing a Dictionary<string, string> as a second argument to TagEvent().  For example, to collect information about unhandled exceptions, you could use the following code:
 ````csharp
 private void OnUnhandledException(object sender, UnhandledExceptionEventArgs unhandledExceptionEventArgs)
 {
@@ -49,8 +49,8 @@ private void OnUnhandledException(object sender, UnhandledExceptionEventArgs unh
   var dict = new Dictionary<string, string>();
   dict.Add("Message",unhandledExceptionEventArgs.Message);
   dict.Add("Stack trace", unhandledExceptionEventArgs.Exception.StackTrace);
-  ((App)Application.Current).appSession.tagEvent("Unhandled exception", dict);
-  appSession.close();
+  ((App)Application.Current).appSession.TagEvent("Unhandled exception", dict);
+  await appSession.Close();
 }
 ````
 ## Notes

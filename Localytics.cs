@@ -62,7 +62,7 @@ namespace Localytics
         /// <summary>
         /// Tallies up the number of files whose name starts w/ sessionFilePrefix in the localytics dir
         /// </summary>
-        private static async Task<int> getNumberOfStoredSessions()
+        private static async Task<int> GetNumberOfStoredSessions()
         {
             var store = getStore();
             try
@@ -81,7 +81,7 @@ namespace Localytics
         /// Gets a stream pointing to the requested file.  If the file does not exist it is created.
         /// </summary>
         /// <param name="filename">Name of the file (w/o directory) to create</param>
-        private static async Task<Stream> getStreamForFile(string filename)
+        private static async Task<Stream> GetStreamForFile(string filename)
         {
             var store = getStore();
             var folder = await store.CreateFolderAsync(directoryName, CreationCollisionOption.OpenIfExists);
@@ -94,14 +94,15 @@ namespace Localytics
         /// </summary>
         /// <param name="text">Text to append</param>
         /// <param name="filename">Name of file to append to</param>
-        private static async Task appendTextToFile(string text, string filename)
+        private static async Task AppendTextToFile(string text, string filename)
         {
-            using (var file = await getStreamForFile(filename))
+            using (var file = await GetStreamForFile(filename))
             {
                 file.Seek(0, SeekOrigin.End);
                 using (var writer = new StreamWriter(file))
                 {
                     writer.Write(text);
+                    writer.Flush();
                 }
             }
         }
@@ -149,7 +150,7 @@ namespace Localytics
         /// <summary>
         /// loops through all the files in the directory deleting the upload files
         /// </summary>
-        private static async void DeleteUploadFiles()
+        private static async Task DeleteUploadFiles()
         {
             var store = getStore();
             var folder = await store.CreateFolderAsync(directoryName, CreationCollisionOption.OpenIfExists);
@@ -165,7 +166,7 @@ namespace Localytics
         /// Rename any open session files. This way events recorded during uploaded get written safely to disk
         /// and threading difficulties are missed.
         /// </summary>
-        private async void renameOrAppendSessionFiles()
+        private async Task RenameOrAppendSessionFiles()
         {
             var store = getStore();
             var folder = await store.CreateFolderAsync(directoryName, CreationCollisionOption.OpenIfExists);
@@ -178,10 +179,10 @@ namespace Localytics
                 // Any time sessions are appended, an upload header should be added. But only one is needed regardless of number of files added
                 if (!addedHeader)
                 {
-                    await appendTextToFile(await GetBlobHeader(), destinationFileName);
+                    await AppendTextToFile(await GetBlobHeader(), destinationFileName);
                     addedHeader = true;
                 }
-                await appendTextToFile(await GetFileContents(file.Name), destinationFileName);
+                await AppendTextToFile(await GetFileContents(file.Name), destinationFileName);
                 await file.DeleteAsync();
             }
         }
@@ -189,13 +190,13 @@ namespace Localytics
         /// <summary>
         /// Runs on a seperate thread and is responsible for renaming and uploading files as appropriate
         /// </summary>
-        private void BeginUpload()
+        private async Task BeginUpload()
         {
             LogMessage("Beginning upload.");
 
             try
             {
-                renameOrAppendSessionFiles();
+                await RenameOrAppendSessionFiles();
 
                 // begin the upload
                 string url = serviceURLBase + this.appKey + "/uploads";
@@ -204,7 +205,7 @@ namespace Localytics
                 HttpWebRequest myRequest = (HttpWebRequest)WebRequest.Create(url);
                 myRequest.Method = "POST";
                 myRequest.ContentType = "application/json";
-                myRequest.BeginGetRequestStream(new AsyncCallback(httpRequestCallback), myRequest);
+                myRequest.BeginGetRequestStream(HttpRequestCallback, myRequest);
             }
             catch (Exception e)
             {
@@ -212,7 +213,7 @@ namespace Localytics
             }
         }
 
-        private static async void httpRequestCallback(IAsyncResult asynchronousResult)
+        private static async void HttpRequestCallback(IAsyncResult asynchronousResult)
         {
             try
             {
@@ -225,7 +226,7 @@ namespace Localytics
                     postStream.Write(byteArray, 0, byteArray.Length);
                 }
 
-                request.BeginGetResponse(new AsyncCallback(GetResponseCallback), request);
+                request.BeginGetResponse(GetResponseCallback, request);
             }
             catch (Exception e)
             {
@@ -233,7 +234,7 @@ namespace Localytics
             }
         }
 
-        private static void GetResponseCallback(IAsyncResult asynchronousResult)
+        private static async void GetResponseCallback(IAsyncResult asynchronousResult)
         {
             try
             {
@@ -247,7 +248,7 @@ namespace Localytics
                             string responseString = streamRead.ReadToEnd();
 
                             LogMessage("Upload complete. Response: " + responseString);
-                            DeleteUploadFiles();
+                            await DeleteUploadFiles();
                         }
                     }
                 }
@@ -284,14 +285,17 @@ namespace Localytics
             var file = await FileExists(store, metaFile);
             if (file == null || await IsFileEmpty(file))
             {
-                SetNextSequenceNumber("1");
+                await SetNextSequenceNumber("1");
                 return "1";
             }
             string sequenceNumber;
-            using (TextReader reader = new StreamReader(await file.OpenStreamForReadAsync()))
+            using (var stream = await file.OpenStreamForReadAsync())
             {
-                string installID = reader.ReadLine();
-                sequenceNumber = reader.ReadLine();
+                using (TextReader reader = new StreamReader(stream))
+                {
+                    string installID = reader.ReadLine();
+                    sequenceNumber = reader.ReadLine();
+                }
             }
             return sequenceNumber;
         }
@@ -300,7 +304,7 @@ namespace Localytics
         /// Sets the next sequence number in the metadata file. Creates the file if its not already there
         /// </summary>
         /// <param name="number">Next sequence number</param>
-        private static async void SetNextSequenceNumber(string number)
+        private static async Task SetNextSequenceNumber(string number)
         {
             var store = getStore();
             string metaFile = directoryName + @"\" + metaFileName;
@@ -308,7 +312,7 @@ namespace Localytics
             if (file == null || await IsFileEmpty(file))
             {
                 // Create a new metadata file consisting of a unique installation ID and a sequence number
-                await appendTextToFile(Guid.NewGuid().ToString() + Environment.NewLine + number, metaFileName);
+                await AppendTextToFile(Guid.NewGuid().ToString() + Environment.NewLine + number, metaFileName);
             }
             else
             {
@@ -328,6 +332,7 @@ namespace Localytics
                     {
                         writer.WriteLine(installId);
                         writer.Write(number);
+                        writer.Flush();
                     }
                 }
             }
@@ -366,7 +371,7 @@ namespace Localytics
             DateTimeOffset dto;
             if (file == null || await IsFileEmpty(file))
             {
-                SetNextSequenceNumber("1");
+                await SetNextSequenceNumber("1");
                 dto = DateTimeOffset.MinValue;
             }
             else
@@ -467,7 +472,7 @@ namespace Localytics
 
             string sequenceNumber = await GetSequenceNumber();
             blobString.Append("\"seq\":" + sequenceNumber + ",");
-            SetNextSequenceNumber((int.Parse(sequenceNumber) + 1).ToString());
+            await SetNextSequenceNumber((int.Parse(sequenceNumber) + 1).ToString());
 
             blobString.Append("\"u\":\"" + Guid.NewGuid().ToString() + "\",");
             blobString.Append("\"attrs\":");
@@ -530,7 +535,7 @@ namespace Localytics
         /// <summary>
         /// Opens or resumes the Localytics session.
         /// </summary>
-        public async void open()
+        public async Task Open()
         {
             if (this.isSessionOpen || this.isSessionClosed)
             {
@@ -540,7 +545,7 @@ namespace Localytics
 
             try
             {
-                if (await getNumberOfStoredSessions() > maxStoredSessions)
+                if (await GetNumberOfStoredSessions() > maxStoredSessions)
                 {
                     LogMessage("Local stored session count exceeded.");
                     return;
@@ -571,7 +576,7 @@ namespace Localytics
                 openstring.Append("}");
                 openstring.Append(Environment.NewLine);
 
-                await appendTextToFile(openstring.ToString(), this.sessionFilename);
+                await AppendTextToFile(openstring.ToString(), this.sessionFilename);
 
                 this.isSessionOpen = true;
                 LogMessage("Session opened.");
@@ -585,7 +590,7 @@ namespace Localytics
         /// <summary>
         /// Closes the Localytics session.
         /// </summary>
-        public void close()
+        public async Task Close()
         {
             if (this.isSessionOpen == false || this.isSessionClosed == true)
             {
@@ -618,7 +623,7 @@ namespace Localytics
                 closeString.Append("\"ct\":" + GetTimeInUnixTime().ToString());
                 closeString.Append("}");
                 closeString.Append(Environment.NewLine);
-                appendTextToFile(closeString.ToString(), this.sessionFilename).RunSynchronously(); // the close blob
+                await AppendTextToFile(closeString.ToString(), this.sessionFilename); // the close blob
 
                 this.isSessionOpen = false;
                 this.isSessionClosed = true;
@@ -634,7 +639,7 @@ namespace Localytics
         /// Creates a new thread which collects any files and uploads them. Returns immediately if an upload
         /// is already happenning.
         /// </summary>
-        public void upload()
+        public async Task Upload()
         {
             if (isUploading)
             {
@@ -646,7 +651,7 @@ namespace Localytics
             try
             {
                 // Do all the upload work on a seperate thread.
-                Task.Run(() => BeginUpload());
+                await Task.Run((Func<Task>)BeginUpload);
             }
             catch (Exception e)
             {
@@ -661,7 +666,7 @@ namespace Localytics
         /// </summary>
         /// <param name="eventName">The name of the event which occured. E.G. 'button pressed'</param>
         /// <param name="attributes">Key value pairs that record data relevant to the event.</param>
-        public async void tagEvent(string eventName, Dictionary<string, string> attributes = null)
+        public async Task TagEvent(string eventName, Dictionary<string, string> attributes = null)
         {
             if (this.isSessionOpen == false)
             {
@@ -709,7 +714,7 @@ namespace Localytics
                 eventString.Append("}");
                 eventString.Append(Environment.NewLine);
 
-                await appendTextToFile(eventString.ToString(), this.sessionFilename); // the close blob
+                await AppendTextToFile(eventString.ToString(), this.sessionFilename); // the close blob
                 LogMessage("Tagged event: " + EscapeString(eventName));
             }
             catch (Exception e)
