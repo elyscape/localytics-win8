@@ -33,10 +33,10 @@ Make sure to add a handler to the Suspending event (this has already been done o
 ````csharp
 private async void OnSuspending(object sender, SuspendingEventArgs e)
 {
-    var deferral = e.SuspendingOperation.GetDeferral();
-    await appSession.Close();
-    /* other suspension code */
-    deferral.Complete();
+  var deferral = e.SuspendingOperation.GetDeferral();
+  await appSession.Close();
+  /* other suspension code */
+  deferral.Complete();
 }
 ````
 ### Tagging events (optional)
