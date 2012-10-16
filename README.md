@@ -29,9 +29,15 @@ protected override async void OnLaunched(LaunchActivatedEventArgs args)
 ````
 You'll also want to put that at the beginning of [OnActivated()](http://msdn.microsoft.com/en-us/library/windows/apps/windows.ui.xaml.application.onactivated.aspx), if your app offers any other methods of activation (e.g. search contract, file picker).
 
-Make sure to add a handler to the Suspending event (this has already been done on layout-aware pages as OnSuspending).  At the beginning of OnSuspending(), put this line:
+Make sure to add a handler to the Suspending event (this has already been done on layout-aware pages as OnSuspending).  You'll need to request a deferral of suspension, as well.  That is to say, your OnSuspending should look like this:
 ````csharp
-await appSession.Close();
+private async void OnSuspending(object sender, SuspendingEventArgs e)
+{
+    var deferral = e.SuspendingOperation.GetDeferral();
+    await appSession.Close();
+    /* other suspension code */
+    deferral.Complete();
+}
 ````
 ### Tagging events (optional)
 To tag an event, use the following line of code:
