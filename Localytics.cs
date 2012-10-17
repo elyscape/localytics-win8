@@ -706,7 +706,7 @@ namespace Localytics
                     foreach (string key in attributes.Keys)
                     {
                         if (!first) { eventString.Append(","); }
-                        eventString.Append(EscapeString(key) + ":" + EscapeString(attributes[key]));
+                        eventString.Append(EscapeString(key ?? string.Empty) + ":" + EscapeString(attributes[key] ?? string.Empty));
                         first = false;
                     }
                     eventString.Append("}");
