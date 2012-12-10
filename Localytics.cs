@@ -405,7 +405,10 @@ namespace Localytics
         public static string GetAppVersion()
         {
             if (string.IsNullOrEmpty(_version))
-                _version = Windows.ApplicationModel.Package.Current.Id.Version.ToString();
+            {
+                var version = Windows.ApplicationModel.Package.Current.Id.Version;
+                _version = string.Format("{0}.{1}.{2}.{3}", version.Major, version.Minor, version.Build, version.Revision);
+            }
             return _version;
         }
 
